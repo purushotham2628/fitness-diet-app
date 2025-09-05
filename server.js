@@ -13,14 +13,20 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 if (process.env.NODE_ENV === 'production') {
+  // Serve static React build
   app.use(express.static(path.join(__dirname, 'client', 'build')));
 
-  // Handles all requests that don’t match API routes by sending React app
-  app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'client', 'build', 'index.html'));
-});
-
+  // React Router fallback (must be last after API routes)
+  app.get(/.*/, (req, res) => {
+    res.sendFile(path.join(__dirname, 'client', 'build', 'index.html'));
+  });
+} else {
+  // Dev fallback (optional)
+  app.get('/', (req, res) => {
+    res.send('API running in development mode 🚀');
+  });
 }
+
 
 
 
@@ -847,14 +853,8 @@ cron.schedule('0 9 * * 0', async () => {
   }
 });
 
-// Serve React app for all unmatched routes
-app.use((req, res) => {
-  if (process.env.NODE_ENV === 'production') {
-    res.sendFile(path.join(__dirname, 'client', 'build', 'index.html'));
-  } else {
-    res.sendFile(path.join(__dirname, 'client', 'public', 'index.html'));
-  }
-});
+
+
 
 // Start server
 app.listen(PORT, () => {
