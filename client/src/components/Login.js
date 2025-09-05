@@ -14,10 +14,10 @@ const Login = () => {
   const navigate = useNavigate();
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
+    setFormData(prev => ({
+      ...prev,
       [e.target.name]: e.target.value
-    });
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -25,14 +25,18 @@ const Login = () => {
     setLoading(true);
     setError('');
 
-    const result = await login(formData.email, formData.password);
-    
-    if (result.success) {
-      navigate('/dashboard');
-    } else {
-      setError(result.error);
+    try {
+      const result = await login(formData.email, formData.password);
+      if (result.success) {
+        navigate('/dashboard');
+      } else {
+        setError(result.error || 'Login failed');
+      }
+    } catch (err) {
+      setError('Unexpected error occurred');
+      console.error('Login error:', err);
     }
-    
+
     setLoading(false);
   };
 
@@ -46,7 +50,11 @@ const Login = () => {
           <h2 style={{ marginBottom: '30px' }}>Login</h2>
         </div>
         
-        {error && <div className="error">{error}</div>}
+        {error && (
+          <div className="error" style={{ marginBottom: '15px', color: 'red', fontWeight: 'bold' }}>
+            {error}
+          </div>
+        )}
         
         <form onSubmit={handleSubmit}>
           <div className="form-group">
@@ -59,10 +67,11 @@ const Login = () => {
               onChange={handleChange}
               required
               placeholder="Enter your email"
+              autoComplete="username"
             />
           </div>
           
-          <div className="form-group">
+          <div className="form-group" style={{ marginTop: '15px' }}>
             <label htmlFor="password">Password</label>
             <input
               type="password"
@@ -72,13 +81,14 @@ const Login = () => {
               onChange={handleChange}
               required
               placeholder="Enter your password"
+              autoComplete="current-password"
             />
           </div>
           
           <button 
             type="submit" 
             className="btn" 
-            style={{ width: '100%' }}
+            style={{ width: '100%', marginTop: '20px' }}
             disabled={loading}
           >
             {loading ? 'Logging in...' : 'Login'}

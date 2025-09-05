@@ -9,7 +9,7 @@ const WorkoutTracker = () => {
     exercise_name: '',
     duration: '',
     calories_burned: '',
-    notes: ''
+    notes: '',
   });
 
   useEffect(() => {
@@ -19,9 +19,11 @@ const WorkoutTracker = () => {
   const fetchWorkouts = async () => {
     try {
       const response = await axios.get('/api/workouts', { withCredentials: true });
-      setWorkouts(response.data);
+      const data = response.data;
+      setWorkouts(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error fetching workouts:', error);
+      setWorkouts([]);
     } finally {
       setLoading(false);
     }
@@ -30,7 +32,7 @@ const WorkoutTracker = () => {
   const handleInputChange = (e) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     });
   };
 
@@ -38,14 +40,15 @@ const WorkoutTracker = () => {
     e.preventDefault();
     try {
       const response = await axios.post('/api/workouts', formData, {
-        withCredentials: true
+        withCredentials: true,
       });
-      setWorkouts([response.data, ...workouts]);
+      const newWorkout = response.data;
+      setWorkouts((prevWorkouts) => [newWorkout, ...prevWorkouts]);
       setFormData({
         exercise_name: '',
         duration: '',
         calories_burned: '',
-        notes: ''
+        notes: '',
       });
       setShowForm(false);
     } catch (error) {
@@ -58,7 +61,7 @@ const WorkoutTracker = () => {
     if (window.confirm('Are you sure you want to delete this workout?')) {
       try {
         await axios.delete(`/api/workouts/${id}`, { withCredentials: true });
-        setWorkouts(workouts.filter(w => w.id !== id));
+        setWorkouts((prevWorkouts) => prevWorkouts.filter((w) => w.id !== id));
       } catch (error) {
         console.error('Error deleting workout:', error);
         alert('Failed to delete workout');
@@ -75,10 +78,7 @@ const WorkoutTracker = () => {
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h1>🏋️‍♂️ Workout Tracker</h1>
-          <button 
-            className="btn" 
-            onClick={() => setShowForm(!showForm)}
-          >
+          <button className="btn" onClick={() => setShowForm(!showForm)}>
             {showForm ? 'Cancel' : 'Add Workout'}
           </button>
         </div>
@@ -150,47 +150,45 @@ const WorkoutTracker = () => {
 
       <div className="card">
         <h2>Workout History</h2>
-        {workouts.length > 0 ? (
-          <div>
-            {workouts.map((workout) => (
-              <div key={workout.id} className="workout-item">
-                <div className="item-header">
-                  <div className="item-title">{workout.exercise_name}</div>
-                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                    <div className="item-date">
-                      {new Date(workout.date).toLocaleDateString()}
-                    </div>
-                    <button 
-                      className="btn btn-danger"
-                      style={{ padding: '5px 10px', fontSize: '12px' }}
-                      onClick={() => deleteWorkout(workout.id)}
-                    >
-                      Delete
-                    </button>
+        {Array.isArray(workouts) && workouts.length > 0 ? (
+          workouts.map((workout) => (
+            <div key={workout.id} className="workout-item">
+              <div className="item-header">
+                <div className="item-title">{workout.exercise_name || 'Unknown Exercise'}</div>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <div className="item-date">
+                    {workout.date ? new Date(workout.date).toLocaleDateString() : 'No date'}
                   </div>
+                  <button
+                    className="btn btn-danger"
+                    style={{ padding: '5px 10px', fontSize: '12px' }}
+                    onClick={() => deleteWorkout(workout.id)}
+                  >
+                    Delete
+                  </button>
                 </div>
-                <div className="item-details">
-                  <div className="detail-item">
-                    <div className="detail-value">{workout.duration}</div>
-                    <div className="detail-label">Minutes</div>
-                  </div>
-                  <div className="detail-item">
-                    <div className="detail-value">{workout.calories_burned}</div>
-                    <div className="detail-label">Calories</div>
-                  </div>
-                </div>
-                {workout.notes && (
-                  <div style={{ marginTop: '10px', fontStyle: 'italic', color: '#666' }}>
-                    "{workout.notes}"
-                  </div>
-                )}
               </div>
-            ))}
-          </div>
+              <div className="item-details">
+                <div className="detail-item">
+                  <div className="detail-value">{workout.duration || '-'}</div>
+                  <div className="detail-label">Minutes</div>
+                </div>
+                <div className="detail-item">
+                  <div className="detail-value">{workout.calories_burned || '-'}</div>
+                  <div className="detail-label">Calories</div>
+                </div>
+              </div>
+              {workout.notes && (
+                <div style={{ marginTop: '10px', fontStyle: 'italic', color: '#666' }}>
+                  "{workout.notes}"
+                </div>
+              )}
+            </div>
+          ))
         ) : (
           <div className="text-center" style={{ padding: '40px' }}>
-            <p>No workouts logged yet!</p>
-            <p>Click "Add Workout" to get started with your fitness journey.</p>
+            <p>No workouts logged yet.</p>
+            <p>Click "Add Workout" to start your fitness journey.</p>
           </div>
         )}
       </div>

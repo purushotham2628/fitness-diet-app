@@ -11,7 +11,7 @@ const Community = () => {
     content: '',
     workout_type: '',
     calories_burned: '',
-    achievement: ''
+    achievement: '',
   });
 
   useEffect(() => {
@@ -21,33 +21,35 @@ const Community = () => {
   const fetchPosts = async () => {
     try {
       const response = await axios.get('/api/community/posts', { withCredentials: true });
-      setPosts(response.data);
+      const data = response.data;
+      setPosts(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error fetching posts:', error);
+      setPosts([]);
     } finally {
       setLoading(false);
     }
   };
 
   const handleInputChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post('/api/community/posts', formData, {
-        withCredentials: true
-      });
-      setPosts([response.data, ...posts]);
+      const response = await axios.post('/api/community/posts', formData, { withCredentials: true });
+      const newPost = response.data;
+      setPosts((prev) => [newPost, ...prev]);
       setFormData({
         content: '',
         workout_type: '',
         calories_burned: '',
-        achievement: ''
+        achievement: '',
       });
       setShowForm(false);
     } catch (error) {
@@ -60,7 +62,7 @@ const Community = () => {
     if (window.confirm('Are you sure you want to delete this post?')) {
       try {
         await axios.delete(`/api/community/posts/${id}`, { withCredentials: true });
-        setPosts(posts.filter(p => p.id !== id));
+        setPosts((prev) => prev.filter((p) => p.id !== id));
       } catch (error) {
         console.error('Error deleting post:', error);
         alert('Failed to delete post');
@@ -70,29 +72,32 @@ const Community = () => {
 
   const likePost = async (id) => {
     try {
-      const response = await axios.post(`/api/community/posts/${id}/like`, {}, {
-        withCredentials: true
-      });
-      setPosts(posts.map(post => 
-        post.id === id 
-          ? { ...post, likes: response.data.likes, user_liked: response.data.user_liked }
-          : post
-      ));
+      const response = await axios.post(`/api/community/posts/${id}/like`, {}, { withCredentials: true });
+      const updatedPost = response.data;
+      setPosts((prev) =>
+        prev.map((post) =>
+          post.id === id ? { ...post, likes: updatedPost.likes, user_liked: updatedPost.user_liked } : post
+        )
+      );
     } catch (error) {
-      console.error('Error liking post:', error);
+      console.error('Error liking/unliking post:', error);
     }
   };
 
   const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffTime = Math.abs(now - date);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 1) return 'Today';
-    if (diffDays === 2) return 'Yesterday';
-    if (diffDays <= 7) return `${diffDays - 1} days ago`;
-    return date.toLocaleDateString();
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffTime = now - date;
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      if (diffDays === 0) return 'Today';
+      if (diffDays === 1) return 'Yesterday';
+      if (diffDays < 7) return `${diffDays} days ago`;
+      return date.toLocaleDateString();
+    } catch {
+      return '';
+    }
   };
 
   if (loading) {
@@ -104,10 +109,7 @@ const Community = () => {
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h1>👥 Community</h1>
-          <button 
-            className="btn" 
-            onClick={() => setShowForm(!showForm)}
-          >
+          <button className="btn" onClick={() => setShowForm(!showForm)}>
             {showForm ? 'Cancel' : 'Share Progress'}
           </button>
         </div>
@@ -126,11 +128,11 @@ const Community = () => {
                 value={formData.content}
                 onChange={handleInputChange}
                 required
-                rows="4"
+                rows={4}
                 placeholder="Share your workout experience, motivation, or achievement..."
               />
             </div>
-            
+
             <div className="form-row">
               <div className="form-group">
                 <label htmlFor="workout_type">Workout Type (Optional)</label>
@@ -151,12 +153,12 @@ const Community = () => {
                   name="calories_burned"
                   value={formData.calories_burned}
                   onChange={handleInputChange}
-                  min="0"
+                  min={0}
                   placeholder="300"
                 />
               </div>
             </div>
-            
+
             <div className="form-group">
               <label htmlFor="achievement">Achievement (Optional)</label>
               <input
@@ -168,10 +170,8 @@ const Community = () => {
                 placeholder="e.g., First 5K run, Lost 5 pounds, New personal record"
               />
             </div>
-            
-            <button type="submit" className="btn">
-              Share Post
-            </button>
+
+            <button type="submit" className="btn">Share</button>
           </form>
         </div>
       )}
@@ -179,104 +179,92 @@ const Community = () => {
       <div className="card">
         <h2>Community Feed</h2>
         {posts.length > 0 ? (
-          <div>
-            {posts.map((post) => (
-              <div key={post.id} className="post-item">
-                <div className="item-header">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ 
-                      width: '40px', 
-                      height: '40px', 
-                      borderRadius: '50%', 
-                      background: 'linear-gradient(45deg, #667eea, #764ba2)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'white',
-                      fontWeight: 'bold'
-                    }}>
-                      {post.username.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <div className="item-title">{post.username}</div>
-                      <div className="item-date">{formatDate(post.created_at)}</div>
-                    </div>
+          posts.map((post) => (
+            <div key={post.id} className="post-item">
+              <div className="item-header">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: '50%',
+                    background: 'linear-gradient(45deg, #667eea, #764ba2)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'white',
+                    fontWeight: 'bold',
+                  }}>
+                    {post.username ? post.username.charAt(0).toUpperCase() : 'U'}
                   </div>
-                  {post.user_id === user?.id && (
-                    <button 
-                      className="btn btn-danger"
-                      style={{ padding: '5px 10px', fontSize: '12px' }}
-                      onClick={() => deletePost(post.id)}
-                    >
-                      Delete
-                    </button>
+                  <div>
+                    <div className="item-title">{post.username || 'Unknown User'}</div>
+                    <div className="item-date">{formatDate(post.created_at)}</div>
+                  </div>
+                </div>
+                {post.user_id === user?.id && (
+                  <button
+                    className="btn btn-danger"
+                    style={{ padding: '5px 10px', fontSize: 12 }}
+                    onClick={() => deletePost(post.id)}
+                  >
+                    Delete
+                  </button>
+                )}
+              </div>
+
+              <div style={{ margin: '15px 0', fontSize: 16, whiteSpace: 'pre-wrap' }}>
+                {post.content || ''}
+              </div>
+
+              {(post.workout_type || post.calories_burned || post.achievement) && (
+                <div style={{
+                  background: '#f8f9fa',
+                  padding: 15,
+                  borderRadius: 8,
+                  marginBottom: 10,
+                  border: '1px solid #e9ecef'
+                }}>
+                  {post.workout_type && (
+                    <div><strong>🏋️ Workout:</strong> {post.workout_type}</div>
+                  )}
+                  {post.calories_burned && (
+                    <div><strong>🔥 Calories Burned:</strong> {post.calories_burned}</div>
+                  )}
+                  {post.achievement && (
+                    <div><strong>🏆 Achievement:</strong> {post.achievement}</div>
                   )}
                 </div>
-                
-                <div style={{ margin: '15px 0', fontSize: '16px', lineHeight: '1.5' }}>
-                  {post.content}
-                </div>
-                
-                {(post.workout_type || post.calories_burned || post.achievement) && (
-                  <div style={{ 
-                    background: '#f8f9fa', 
-                    padding: '15px', 
-                    borderRadius: '8px', 
-                    margin: '15px 0',
-                    border: '1px solid #e9ecef'
-                  }}>
-                    {post.workout_type && (
-                      <div style={{ marginBottom: '8px' }}>
-                        <strong>🏋️‍♂️ Workout:</strong> {post.workout_type}
-                      </div>
-                    )}
-                    {post.calories_burned && (
-                      <div style={{ marginBottom: '8px' }}>
-                        <strong>🔥 Calories Burned:</strong> {post.calories_burned}
-                      </div>
-                    )}
-                    {post.achievement && (
-                      <div>
-                        <strong>🏆 Achievement:</strong> {post.achievement}
-                      </div>
-                    )}
-                  </div>
-                )}
-                
-                <div style={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'center',
-                  paddingTop: '15px',
-                  borderTop: '1px solid #e9ecef'
-                }}>
-                  <button 
-                    className={`btn ${post.user_liked ? '' : 'btn-secondary'}`}
-                    style={{ 
-                      padding: '8px 16px', 
-                      fontSize: '14px',
-                      background: post.user_liked ? 'linear-gradient(45deg, #667eea, #764ba2)' : '#6c757d'
-                    }}
-                    onClick={() => likePost(post.id)}
-                  >
-                    {post.user_liked ? '❤️' : '🤍'} {post.likes || 0} Like{(post.likes || 0) !== 1 ? 's' : ''}
-                  </button>
-                  
-                  <div style={{ color: '#666', fontSize: '14px' }}>
-                    Keep up the great work! 💪
-                  </div>
+              )}
+
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                borderTop: '1px solid #e9ecef',
+                paddingTop: 15,
+              }}>
+                <button
+                  className={`btn ${post.user_liked ? '' : 'btn-secondary'}`}
+                  style={{
+                    padding: '8px 16px',
+                    fontSize: 14,
+                    background: post.user_liked ? 'linear-gradient(45deg, #667eea, #764ba2)' : '#6c757d'
+                  }}
+                  onClick={() => likePost(post.id)}
+                >
+                  {post.user_liked ? '❤️' : '🤍'} {post.likes || 0} Like{(post.likes || 0) !== 1 ? 's' : ''}
+                </button>
+                <div style={{ color: '#666', fontSize: 14 }}>
+                  Keep up the great work! 💪
                 </div>
               </div>
-            ))}
-          </div>
+            </div>
+          ))
         ) : (
-          <div className="text-center" style={{ padding: '40px' }}>
+          <div className="text-center" style={{ padding: 40, color: '#666' }}>
             <h3>No posts yet!</h3>
-            <p>Be the first to share your fitness journey with the community.</p>
-            <button 
-              className="btn" 
-              onClick={() => setShowForm(true)}
-            >
+            <p>Be the first to share your fitness journey.</p>
+            <button className="btn" onClick={() => setShowForm(true)}>
               Share Your Progress
             </button>
           </div>

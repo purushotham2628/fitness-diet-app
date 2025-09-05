@@ -16,116 +16,135 @@ const Register = () => {
   const navigate = useNavigate();
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
+    setFormData(prev => ({
+      ...prev,
       [e.target.name]: e.target.value
-    });
+    }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
     setError('');
 
+    // Basic validations before calling API
+    if (!formData.username.trim()) {
+      setError('Username is required');
+      return;
+    }
+    if (!formData.email.trim()) {
+      setError('Email is required');
+      return;
+    }
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
-      setLoading(false);
       return;
     }
-
     if (formData.password.length < 6) {
       setError('Password must be at least 6 characters long');
-      setLoading(false);
       return;
     }
 
-    const result = await register(formData.username, formData.email, formData.password);
-    
-    if (result.success) {
-      navigate('/dashboard');
-    } else {
-      setError(result.error);
+    setLoading(true);
+
+    try {
+      const result = await register(formData.username, formData.email, formData.password);
+      if (result.success) {
+        navigate('/dashboard');
+      } else {
+        setError(result.error || 'Registration failed');
+      }
+    } catch (err) {
+      setError('Unexpected error occurred. Please try again.');
+      console.error('Registration error:', err);
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
   return (
     <div className="container">
-      <div className="card" style={{ maxWidth: '400px', margin: '50px auto' }}>
+      <div className="card" style={{ maxWidth: 400, margin: '50px auto' }}>
         <div className="text-center">
-          <h1 style={{ color: '#667eea', marginBottom: '10px' }}>
-            🏃‍♀️ Fitness & Diet Tracker
+          <h1 style={{ color: '#667eea', marginBottom: 10 }}>
+            🏃‍♀️ Fitness &amp; Diet Tracker
           </h1>
-          <h2 style={{ marginBottom: '30px' }}>Register</h2>
+          <h2 style={{ marginBottom: 30 }}>Register</h2>
         </div>
-        
-        {error && <div className="error">{error}</div>}
-        
-        <form onSubmit={handleSubmit}>
+
+        {error && (
+          <div className="error" style={{ marginBottom: 15, color: 'red', fontWeight: 'bold' }}>
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} noValidate>
           <div className="form-group">
             <label htmlFor="username">Username</label>
-            <input
+            <input 
               type="text"
               id="username"
               name="username"
               value={formData.username}
               onChange={handleChange}
-              required
               placeholder="Choose a username"
+              required
+              autoComplete="username"
             />
           </div>
-          
-          <div className="form-group">
+
+          <div className="form-group" style={{ marginTop: 15 }}>
             <label htmlFor="email">Email</label>
-            <input
+            <input 
               type="email"
               id="email"
               name="email"
               value={formData.email}
               onChange={handleChange}
-              required
               placeholder="Enter your email"
+              required
+              autoComplete="email"
             />
           </div>
-          
-          <div className="form-group">
+
+          <div className="form-group" style={{ marginTop: 15 }}>
             <label htmlFor="password">Password</label>
-            <input
+            <input 
               type="password"
               id="password"
               name="password"
               value={formData.password}
               onChange={handleChange}
-              required
               placeholder="Create a password"
+              required
+              autoComplete="new-password"
             />
           </div>
-          
-          <div className="form-group">
+
+          <div className="form-group" style={{ marginTop: 15 }}>
             <label htmlFor="confirmPassword">Confirm Password</label>
-            <input
+            <input 
               type="password"
               id="confirmPassword"
               name="confirmPassword"
               value={formData.confirmPassword}
               onChange={handleChange}
-              required
               placeholder="Confirm your password"
+              required
+              autoComplete="new-password"
             />
           </div>
-          
+
           <button 
-            type="submit" 
-            className="btn" 
-            style={{ width: '100%' }}
+            type="submit"
+            className="btn"
+            style={{ width: '100%', marginTop: 20 }}
             disabled={loading}
           >
             {loading ? 'Creating Account...' : 'Register'}
           </button>
         </form>
-        
-        <div className="text-center" style={{ marginTop: '20px' }}>
+
+        <div className="text-center" style={{ marginTop: 20 }}>
           <p>
             Already have an account?{' '}
             <Link to="/login" style={{ color: '#667eea' }}>

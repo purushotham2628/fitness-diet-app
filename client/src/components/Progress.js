@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
+import { 
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
+  PieChart, Pie, Cell,
+  BarChart, Bar
+} from 'recharts';
 import axios from 'axios';
 
 const Progress = () => {
@@ -13,21 +17,32 @@ const Progress = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const fetchProgressData = async () => {
+      setLoading(true);
+      try {
+        const response = await axios.get(`/api/progress/${timeframe}`, { withCredentials: true });
+        const data = response.data || {};
+        setProgressData({
+          weekly: data.weekly || [],
+          monthly: data.monthly || [],
+          workoutTypes: data.workoutTypes || [],
+          nutritionBreakdown: data.nutritionBreakdown || []
+        });
+      } catch (error) {
+        console.error('Error fetching progress data:', error);
+        setProgressData({
+          weekly: [],
+          monthly: [],
+          workoutTypes: [],
+          nutritionBreakdown: []
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchProgressData();
   }, [timeframe]);
-
-  const fetchProgressData = async () => {
-    try {
-      const response = await axios.get(`/api/progress/${timeframe}`, {
-        withCredentials: true
-      });
-      setProgressData(response.data);
-    } catch (error) {
-      console.error('Error fetching progress data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const COLORS = ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe'];
 
@@ -35,7 +50,13 @@ const Progress = () => {
     return <div className="loading">Loading progress data...</div>;
   }
 
+  // Select data for current timeframe
   const currentData = progressData[timeframe] || [];
+
+  const totalCaloriesBurned = currentData.reduce((sum, day) => sum + (day.caloriesBurned || 0), 0);
+  const totalCaloriesConsumed = currentData.reduce((sum, day) => sum + (day.caloriesConsumed || 0), 0);
+  const calorieBalance = totalCaloriesBurned - totalCaloriesConsumed;
+  const formattedCalorieBalance = calorieBalance > 0 ? `+${calorieBalance}` : calorieBalance.toString();
 
   return (
     <div>
@@ -43,14 +64,14 @@ const Progress = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h1>📊 Progress Tracking</h1>
           <div>
-            <button 
+            <button
               className={`btn ${timeframe === 'weekly' ? '' : 'btn-secondary'}`}
               onClick={() => setTimeframe('weekly')}
-              style={{ marginRight: '10px' }}
+              style={{ marginRight: 10 }}
             >
               Weekly
             </button>
-            <button 
+            <button
               className={`btn ${timeframe === 'monthly' ? '' : 'btn-secondary'}`}
               onClick={() => setTimeframe('monthly')}
             >
@@ -60,7 +81,7 @@ const Progress = () => {
         </div>
       </div>
 
-      {/* Calorie Balance Chart */}
+      {/* Calorie Line Chart */}
       {currentData.length > 0 && (
         <div className="chart-container">
           <h2 className="chart-title">
@@ -71,28 +92,25 @@ const Progress = () => {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis 
                 dataKey="date" 
-                tickFormatter={(value) => new Date(value).toLocaleDateString()}
+                tickFormatter={value => new Date(value).toLocaleDateString()} 
               />
               <YAxis />
               <Tooltip 
-                labelFormatter={(value) => new Date(value).toLocaleDateString()}
-                formatter={(value, name) => [
-                  `${value} calories`,
-                  name === 'caloriesBurned' ? 'Burned' : 'Consumed'
-                ]}
+                labelFormatter={value => new Date(value).toLocaleDateString()}
+                formatter={(value, name) => [`${value} calories`, name === 'caloriesBurned' ? 'Burned' : 'Consumed']}
               />
-              <Line 
-                type="monotone" 
-                dataKey="caloriesBurned" 
-                stroke="#667eea" 
+              <Line
+                type="monotone"
+                dataKey="caloriesBurned"
+                stroke="#667eea"
                 strokeWidth={3}
                 name="Calories Burned"
                 dot={{ fill: '#667eea', strokeWidth: 2, r: 4 }}
               />
-              <Line 
-                type="monotone" 
-                dataKey="caloriesConsumed" 
-                stroke="#764ba2" 
+              <Line
+                type="monotone"
+                dataKey="caloriesConsumed"
+                stroke="#764ba2"
                 strokeWidth={3}
                 name="Calories Consumed"
                 dot={{ fill: '#764ba2', strokeWidth: 2, r: 4 }}
@@ -103,8 +121,8 @@ const Progress = () => {
       )}
 
       <div className="grid grid-2">
-        {/* Workout Types Breakdown */}
-        {progressData.workoutTypes && progressData.workoutTypes.length > 0 && (
+        {/* Workout Types Pie Chart */}
+        {progressData.workoutTypes.length > 0 && (
           <div className="chart-container">
             <h2 className="chart-title">Workout Types Distribution</h2>
             <ResponsiveContainer width="100%" height={300}>
@@ -113,24 +131,23 @@ const Progress = () => {
                   data={progressData.workoutTypes}
                   cx="50%"
                   cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                   outerRadius={80}
-                  fill="#8884d8"
                   dataKey="count"
+                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  labelLine={false}
                 >
                   {progressData.workoutTypes.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value, name) => [`${value} workouts`, 'Count']} />
+                <Tooltip formatter={(value) => [`${value} workouts`, 'Count']} />
               </PieChart>
             </ResponsiveContainer>
           </div>
         )}
 
-        {/* Nutrition Breakdown */}
-        {progressData.nutritionBreakdown && progressData.nutritionBreakdown.length > 0 && (
+        {/* Nutrition Breakdown Bar Chart */}
+        {progressData.nutritionBreakdown.length > 0 && (
           <div className="chart-container">
             <h2 className="chart-title">Average Daily Nutrition</h2>
             <ResponsiveContainer width="100%" height={300}>
@@ -138,7 +155,7 @@ const Progress = () => {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
                 <YAxis />
-                <Tooltip formatter={(value, name) => [`${value}g`, 'Amount']} />
+                <Tooltip formatter={(value) => [`${value}g`, 'Amount']} />
                 <Bar dataKey="value" fill="#667eea" />
               </BarChart>
             </ResponsiveContainer>
@@ -146,75 +163,64 @@ const Progress = () => {
         )}
       </div>
 
-      {/* Progress Summary Cards */}
+      {/* Summary Cards */}
       <div className="grid grid-3">
         <div className="card">
           <h3>🔥 Total Calories Burned</h3>
-          <div className="stat-value">
-            {currentData.reduce((sum, day) => sum + (day.caloriesBurned || 0), 0)}
-          </div>
-          <div className="stat-label">
-            {timeframe === 'weekly' ? 'This Week' : 'This Month'}
-          </div>
+          <div className="stat-value">{totalCaloriesBurned}</div>
+          <div className="stat-label">{timeframe === 'weekly' ? 'This Week' : 'This Month'}</div>
         </div>
 
         <div className="card">
           <h3>🍽️ Total Calories Consumed</h3>
-          <div className="stat-value">
-            {currentData.reduce((sum, day) => sum + (day.caloriesConsumed || 0), 0)}
-          </div>
-          <div className="stat-label">
-            {timeframe === 'weekly' ? 'This Week' : 'This Month'}
-          </div>
+          <div className="stat-value">{totalCaloriesConsumed}</div>
+          <div className="stat-label">{timeframe === 'weekly' ? 'This Week' : 'This Month'}</div>
         </div>
 
         <div className="card">
           <h3>⚖️ Calorie Balance</h3>
-          <div className="stat-value" style={{
-            color: currentData.reduce((sum, day) => sum + ((day.caloriesBurned || 0) - (day.caloriesConsumed || 0)), 0) >= 0 ? '#28a745' : '#dc3545'
-          }}>
-            {currentData.reduce((sum, day) => sum + ((day.caloriesBurned || 0) - (day.caloriesConsumed || 0)), 0) >= 0 ? '+' : ''}
-            {currentData.reduce((sum, day) => sum + ((day.caloriesBurned || 0) - (day.caloriesConsumed || 0)), 0)}
+          <div
+            className="stat-value"
+            style={{ color: calorieBalance >= 0 ? '#28a745' : '#dc3545' }}
+          >
+            {calorieBalance >= 0 ? '+' : ''}
+            {calorieBalance}
           </div>
-          <div className="stat-label">
-            {timeframe === 'weekly' ? 'This Week' : 'This Month'}
-          </div>
+          <div className="stat-label">{timeframe === 'weekly' ? 'This Week' : 'This Month'}</div>
         </div>
       </div>
 
       {/* Goals and Achievements */}
       <div className="card">
-        <h2>🎯 Goals & Achievements</h2>
+        <h2>Goals & Achievements</h2>
         <div className="grid grid-2">
           <div>
             <h3>Weekly Goals</h3>
-            <div style={{ marginBottom: '20px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
                 <span>Workout Days (Goal: 4/week)</span>
-                <span>{Math.min(currentData.filter(day => day.caloriesBurned > 0).length, 4)}/4</span>
+                <span>{Math.min(progressData[timeframe].filter(day => day.caloriesBurned > 0).length, 4)}/4</span>
               </div>
               <div className="progress-bar">
-                <div 
-                  className="progress-fill" 
-                  style={{ 
-                    width: `${Math.min((currentData.filter(day => day.caloriesBurned > 0).length / 4) * 100, 100)}%` 
+                <div
+                  className="progress-fill"
+                  style={{
+                    width: `${Math.min((progressData[timeframe].filter(day => day.caloriesBurned > 0).length / 4) * 100, 100)}%`
                   }}
-                ></div>
+                />
               </div>
             </div>
-            
-            <div style={{ marginBottom: '20px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                <span>Calories Burned (Goal: 2000/week)</span>
-                <span>{Math.min(currentData.reduce((sum, day) => sum + (day.caloriesBurned || 0), 0), 2000)}/2000</span>
+
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+                <span>Calories Burned (Goal: 2000)</span>
+                <span>{Math.min(totalCaloriesBurned, 2000)}/2000</span>
               </div>
               <div className="progress-bar">
-                <div 
-                  className="progress-fill" 
-                  style={{ 
-                    width: `${Math.min((currentData.reduce((sum, day) => sum + (day.caloriesBurned || 0), 0) / 2000) * 100, 100)}%` 
-                  }}
-                ></div>
+                <div
+                  className="progress-fill"
+                  style={{ width: `${Math.min((totalCaloriesBurned / 2000) * 100, 100)}%` }}
+                />
               </div>
             </div>
           </div>
@@ -222,33 +228,17 @@ const Progress = () => {
           <div>
             <h3>Achievements</h3>
             <div className="achievement-list">
-              {currentData.reduce((sum, day) => sum + (day.caloriesBurned || 0), 0) >= 2000 && (
-                <div className="achievement-item">
-                  🏆 Weekly Calorie Goal Achieved!
-                </div>
-              )}
-              {currentData.filter(day => day.caloriesBurned > 0).length >= 4 && (
-                <div className="achievement-item">
-                  🔥 4+ Workout Days This Week!
-                </div>
-              )}
-              {currentData.some(day => (day.caloriesBurned || 0) > 500) && (
-                <div className="achievement-item">
-                  💪 High-Intensity Workout Completed!
-                </div>
-              )}
-              {currentData.filter(day => day.caloriesBurned > 0).length === 0 && (
-                <div className="achievement-item" style={{ color: '#666' }}>
-                  Start your first workout to unlock achievements!
-                </div>
-              )}
+              {totalCaloriesBurned >= 2000 && <div className="achievement-item">🏆 Weekly Calorie Goal Achieved!</div>}
+              {progressData[timeframe].filter(day => day.caloriesBurned > 0).length >= 4 && <div className="achievement-item">🔥 4+ Workout Days This Week!</div>}
+              {progressData[timeframe].some(day => (day.caloriesBurned || 0) > 500) && <div className="achievement-item">💪 High-Intensity Workout Completed!</div>}
+              {progressData[timeframe].length === 0 && <div className="achievement-item" style={{ color: '#666' }}>Start logging workouts to unlock achievements!</div>}
             </div>
           </div>
         </div>
       </div>
 
       {currentData.length === 0 && (
-        <div className="card text-center">
+        <div className="card text-center" style={{ padding: 40 }}>
           <h2>No Data Available</h2>
           <p>Start logging workouts and meals to see your progress here!</p>
         </div>

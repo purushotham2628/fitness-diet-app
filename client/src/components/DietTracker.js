@@ -27,9 +27,11 @@ const DietTracker = () => {
   const fetchMeals = async () => {
     try {
       const response = await axios.get('/api/meals', { withCredentials: true });
-      setMeals(response.data);
+      const data = response.data;
+      setMeals(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error fetching meals:', error);
+      setMeals([]);
     } finally {
       setLoading(false);
     }
@@ -46,7 +48,8 @@ const DietTracker = () => {
       const response = await axios.get(`/api/nutrition/search?query=${encodeURIComponent(foodName)}`, {
         withCredentials: true
       });
-      setFoodSearchResults(response.data.foods || []);
+      const foods = response.data.foods;
+      setFoodSearchResults(Array.isArray(foods) ? foods : []);
     } catch (error) {
       console.error('Error searching food:', error);
       setFoodSearchResults([]);
@@ -58,7 +61,7 @@ const DietTracker = () => {
   const selectFood = (food) => {
     setFormData({
       ...formData,
-      food_name: food.food_name,
+      food_name: food.food_name || '',
       calories: Math.round(food.nf_calories || 0),
       protein: Math.round(food.nf_protein || 0),
       carbs: Math.round(food.nf_total_carbohydrate || 0),
@@ -70,10 +73,10 @@ const DietTracker = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
+    setFormData(prev => ({
+      ...prev,
       [name]: value
-    });
+    }));
 
     if (name === 'food_name') {
       searchFood(value);
@@ -83,10 +86,9 @@ const DietTracker = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post('/api/meals', formData, {
-        withCredentials: true
-      });
-      setMeals([response.data, ...meals]);
+      const response = await axios.post('/api/meals', formData, { withCredentials: true });
+      const newMeal = response.data;
+      setMeals(prev => [newMeal, ...prev]);
       setFormData({
         food_name: '',
         quantity: 1,
@@ -109,7 +111,7 @@ const DietTracker = () => {
     if (window.confirm('Are you sure you want to delete this meal?')) {
       try {
         await axios.delete(`/api/meals/${id}`, { withCredentials: true });
-        setMeals(meals.filter(m => m.id !== id));
+        setMeals(prev => prev.filter(m => m.id !== id));
       } catch (error) {
         console.error('Error deleting meal:', error);
         alert('Failed to delete meal');
@@ -117,19 +119,19 @@ const DietTracker = () => {
     }
   };
 
-  const getMealsByType = (type) => {
-    return meals.filter(meal => meal.meal_type === type);
-  };
+  const getMealsByType = (type) => meals.filter(meal => meal.meal_type === type);
 
-  const getTotalNutrition = () => {
-    return meals.reduce((total, meal) => ({
-      calories: total.calories + (meal.calories || 0),
-      protein: total.protein + (meal.protein || 0),
-      carbs: total.carbs + (meal.carbs || 0),
-      fat: total.fat + (meal.fat || 0),
-      fiber: total.fiber + (meal.fiber || 0)
-    }), { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 });
-  };
+  const getTotalNutrition = () => 
+    meals.reduce(
+      (total, meal) => ({
+        calories: total.calories + (parseFloat(meal.calories) || 0),
+        protein: total.protein + (parseFloat(meal.protein) || 0),
+        carbs: total.carbs + (parseFloat(meal.carbs) || 0),
+        fat: total.fat + (parseFloat(meal.fat) || 0),
+        fiber: total.fiber + (parseFloat(meal.fiber) || 0),
+      }),
+      { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 }
+    );
 
   if (loading) {
     return <div className="loading">Loading meals...</div>;
@@ -142,10 +144,7 @@ const DietTracker = () => {
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h1>🍎 Diet Tracker</h1>
-          <button 
-            className="btn" 
-            onClick={() => setShowForm(!showForm)}
-          >
+          <button className="btn" onClick={() => setShowForm(!showForm)}>
             {showForm ? 'Cancel' : 'Add Meal'}
           </button>
         </div>
@@ -178,6 +177,7 @@ const DietTracker = () => {
         </div>
       </div>
 
+      {/* Add Meal Form */}
       {showForm && (
         <div className="card">
           <h2>Add New Meal</h2>
@@ -193,6 +193,7 @@ const DietTracker = () => {
                   onChange={handleInputChange}
                   required
                   placeholder="Search for food..."
+                  autoComplete="off"
                 />
                 {searchLoading && (
                   <div style={{ position: 'absolute', right: '10px', top: '35px' }}>
@@ -200,25 +201,27 @@ const DietTracker = () => {
                   </div>
                 )}
                 {foodSearchResults.length > 0 && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    right: 0,
-                    background: 'white',
-                    border: '1px solid #ddd',
-                    borderRadius: '4px',
-                    maxHeight: '200px',
-                    overflowY: 'auto',
-                    zIndex: 1000
-                  }}>
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      right: 0,
+                      background: 'white',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px',
+                      maxHeight: '200px',
+                      overflowY: 'auto',
+                      zIndex: 1000,
+                    }}
+                  >
                     {foodSearchResults.slice(0, 5).map((food, index) => (
                       <div
                         key={index}
                         style={{
                           padding: '10px',
                           cursor: 'pointer',
-                          borderBottom: '1px solid #eee'
+                          borderBottom: '1px solid #eee',
                         }}
                         onClick={() => selectFood(food)}
                       >
@@ -247,19 +250,19 @@ const DietTracker = () => {
                 </select>
               </div>
             </div>
-            
+
             <div className="form-row">
               <div className="form-group">
-                <label htmlFor="quantity">Quantity/Servings</label>
+                <label htmlFor="quantity">Quantity</label>
                 <input
                   type="number"
                   id="quantity"
                   name="quantity"
+                  min="0.1"
+                  step="0.1"
                   value={formData.quantity}
                   onChange={handleInputChange}
                   required
-                  min="0.1"
-                  step="0.1"
                 />
               </div>
               <div className="form-group">
@@ -268,10 +271,10 @@ const DietTracker = () => {
                   type="number"
                   id="calories"
                   name="calories"
+                  min="0"
                   value={formData.calories}
                   onChange={handleInputChange}
                   required
-                  min="0"
                 />
               </div>
             </div>
@@ -283,10 +286,10 @@ const DietTracker = () => {
                   type="number"
                   id="protein"
                   name="protein"
-                  value={formData.protein}
-                  onChange={handleInputChange}
                   min="0"
                   step="0.1"
+                  value={formData.protein}
+                  onChange={handleInputChange}
                 />
               </div>
               <div className="form-group">
@@ -295,10 +298,10 @@ const DietTracker = () => {
                   type="number"
                   id="carbs"
                   name="carbs"
-                  value={formData.carbs}
-                  onChange={handleInputChange}
                   min="0"
                   step="0.1"
+                  value={formData.carbs}
+                  onChange={handleInputChange}
                 />
               </div>
             </div>
@@ -310,10 +313,10 @@ const DietTracker = () => {
                   type="number"
                   id="fat"
                   name="fat"
-                  value={formData.fat}
-                  onChange={handleInputChange}
                   min="0"
                   step="0.1"
+                  value={formData.fat}
+                  onChange={handleInputChange}
                 />
               </div>
               <div className="form-group">
@@ -322,30 +325,33 @@ const DietTracker = () => {
                   type="number"
                   id="fiber"
                   name="fiber"
-                  value={formData.fiber}
-                  onChange={handleInputChange}
                   min="0"
                   step="0.1"
+                  value={formData.fiber}
+                  onChange={handleInputChange}
                 />
               </div>
             </div>
 
-            <button type="submit" className="btn">
-              Add Meal
-            </button>
+            <button type="submit" className="btn">Add Meal</button>
           </form>
         </div>
       )}
 
-      {/* Meals by Type */}
+      {/* Display meals by type */}
       <div className="tab-container">
-        <div className="tab-header">
+        <div className="tab-header" style={{ marginBottom: '1rem' }}>
           {mealTypes.map(type => (
-            <button key={type} className="tab-button active">
+            <button
+              key={type}
+              className="tab-button active"
+              style={{ marginRight: '0.5rem' }}
+            >
               {type.charAt(0).toUpperCase() + type.slice(1)}
             </button>
           ))}
         </div>
+
         <div className="tab-content">
           {mealTypes.map(type => {
             const mealsOfType = getMealsByType(type);
@@ -353,54 +359,27 @@ const DietTracker = () => {
               <div key={type}>
                 <h3>{type.charAt(0).toUpperCase() + type.slice(1)}</h3>
                 {mealsOfType.length > 0 ? (
-                  mealsOfType.map((meal) => (
+                  mealsOfType.map(meal => (
                     <div key={meal.id} className="meal-item">
                       <div className="item-header">
                         <div className="item-title">{meal.food_name}</div>
                         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                          <div className="item-date">
-                            {new Date(meal.date).toLocaleDateString()}
-                          </div>
-                          <button 
-                            className="btn btn-danger"
-                            style={{ padding: '5px 10px', fontSize: '12px' }}
-                            onClick={() => deleteMeal(meal.id)}
-                          >
-                            Delete
-                          </button>
+                          <div className="item-date">{meal.date ? new Date(meal.date).toLocaleDateString() : 'No date'}</div>
+                          <button className="btn btn-danger" onClick={() => deleteMeal(meal.id)}>Delete</button>
                         </div>
                       </div>
                       <div className="nutrition-grid">
-                        <div className="nutrition-item">
-                          <div className="detail-value">{meal.calories}</div>
-                          <div className="detail-label">Calories</div>
-                        </div>
-                        <div className="nutrition-item">
-                          <div className="detail-value">{meal.protein}g</div>
-                          <div className="detail-label">Protein</div>
-                        </div>
-                        <div className="nutrition-item">
-                          <div className="detail-value">{meal.carbs}g</div>
-                          <div className="detail-label">Carbs</div>
-                        </div>
-                        <div className="nutrition-item">
-                          <div className="detail-value">{meal.fat}g</div>
-                          <div className="detail-label">Fat</div>
-                        </div>
-                        {meal.fiber > 0 && (
-                          <div className="nutrition-item">
-                            <div className="detail-value">{meal.fiber}g</div>
-                            <div className="detail-label">Fiber</div>
-                          </div>
-                        )}
+                        <div className="nutrition-item"><div className="detail-value">{meal.calories || 0}</div><div className="detail-label">Calories</div></div>
+                        <div className="nutrition-item"><div className="detail-value">{meal.protein || 0}g</div><div className="detail-label">Protein</div></div>
+                        <div className="nutrition-item"><div className="detail-value">{meal.carbs || 0}g</div><div className="detail-label">Carbs</div></div>
+                        <div className="nutrition-item"><div className="detail-value">{meal.fat || 0}g</div><div className="detail-label">Fat</div></div>
+                        {meal.fiber > 0 && <div className="nutrition-item"><div className="detail-value">{meal.fiber}g</div><div className="detail-label">Fiber</div></div>}
                       </div>
-                      <div style={{ marginTop: '10px', color: '#666' }}>
-                        Quantity: {meal.quantity} serving(s)
-                      </div>
+                      <div style={{ marginTop: '0.5rem' }}>Quantity: {meal.quantity}</div>
                     </div>
                   ))
                 ) : (
-                  <p>No {type} meals logged yet.</p>
+                  <p>No {type} meals logged.</p>
                 )}
               </div>
             );

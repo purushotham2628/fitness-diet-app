@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 
 const Profile = () => {
-  const { user, checkAuthStatus } = useAuth();
+  const { user } = useAuth();
   const [profile, setProfile] = useState({
     age: '',
     height: '',
@@ -30,7 +30,7 @@ const Profile = () => {
   const fetchProfile = async () => {
     try {
       const response = await axios.get('/api/profile', { withCredentials: true });
-      setProfile(response.data);
+      setProfile(response.data || {});
     } catch (error) {
       console.error('Error fetching profile:', error);
     }
@@ -39,7 +39,7 @@ const Profile = () => {
   const fetchStats = async () => {
     try {
       const response = await axios.get('/api/profile/stats', { withCredentials: true });
-      setStats(response.data);
+      setStats(response.data || {});
     } catch (error) {
       console.error('Error fetching stats:', error);
     } finally {
@@ -48,10 +48,11 @@ const Profile = () => {
   };
 
   const handleInputChange = (e) => {
-    setProfile({
-      ...profile,
-      [e.target.name]: e.target.value
-    });
+    const { name, value } = e.target;
+    setProfile(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -73,9 +74,11 @@ const Profile = () => {
   };
 
   const calculateBMI = () => {
-    if (profile.height && profile.weight) {
-      const heightInMeters = profile.height / 100;
-      const bmi = profile.weight / (heightInMeters * heightInMeters);
+    const heightNum = parseFloat(profile.height);
+    const weightNum = parseFloat(profile.weight);
+    if (heightNum > 0 && weightNum > 0) {
+      const heightInMeters = heightNum / 100;
+      const bmi = weightNum / (heightInMeters * heightInMeters);
       return bmi.toFixed(1);
     }
     return null;
@@ -103,11 +106,10 @@ const Profile = () => {
       </div>
 
       <div className="grid grid-2">
-        {/* Profile Information */}
         <div className="card">
           <h2>Personal Information</h2>
           {message && (
-            <div className={`${message.includes('successfully') ? 'success' : 'error'}`}>
+            <div className={message.includes('successfully') ? 'success' : 'error'}>
               {message}
             </div>
           )}
@@ -119,14 +121,14 @@ const Profile = () => {
                 type="number"
                 id="age"
                 name="age"
-                value={profile.age}
+                value={profile.age || ''}
                 onChange={handleInputChange}
                 min="13"
                 max="120"
                 placeholder="25"
               />
             </div>
-            
+
             <div className="form-row">
               <div className="form-group">
                 <label htmlFor="height">Height (cm)</label>
@@ -134,7 +136,7 @@ const Profile = () => {
                   type="number"
                   id="height"
                   name="height"
-                  value={profile.height}
+                  value={profile.height || ''}
                   onChange={handleInputChange}
                   min="100"
                   max="250"
@@ -147,7 +149,7 @@ const Profile = () => {
                   type="number"
                   id="weight"
                   name="weight"
-                  value={profile.weight}
+                  value={profile.weight || ''}
                   onChange={handleInputChange}
                   min="30"
                   max="300"
@@ -156,13 +158,13 @@ const Profile = () => {
                 />
               </div>
             </div>
-            
+
             <div className="form-group">
               <label htmlFor="fitness_goal">Fitness Goal</label>
               <select
                 id="fitness_goal"
                 name="fitness_goal"
-                value={profile.fitness_goal}
+                value={profile.fitness_goal || ''}
                 onChange={handleInputChange}
               >
                 <option value="">Select a goal</option>
@@ -174,13 +176,13 @@ const Profile = () => {
                 <option value="strength">Strength Training</option>
               </select>
             </div>
-            
+
             <div className="form-group">
               <label htmlFor="activity_level">Activity Level</label>
               <select
                 id="activity_level"
                 name="activity_level"
-                value={profile.activity_level}
+                value={profile.activity_level || ''}
                 onChange={handleInputChange}
               >
                 <option value="">Select activity level</option>
@@ -191,36 +193,34 @@ const Profile = () => {
                 <option value="extremely_active">Extremely Active (very hard exercise, physical job)</option>
               </select>
             </div>
-            
+
             <div className="form-group">
               <label htmlFor="target_calories">Daily Calorie Target</label>
               <input
                 type="number"
                 id="target_calories"
                 name="target_calories"
-                value={profile.target_calories}
+                value={profile.target_calories || ''}
                 onChange={handleInputChange}
                 min="1000"
                 max="5000"
                 placeholder="2000"
               />
             </div>
-            
+
             <button type="submit" className="btn" disabled={saving}>
               {saving ? 'Saving...' : 'Save Profile'}
             </button>
           </form>
         </div>
 
-        {/* Health Metrics & Stats */}
         <div>
-          {/* Health Metrics */}
           <div className="card">
             <h2>Health Metrics</h2>
-            
+
             <div className="stats-grid">
               <div className="stat-card">
-                <div className="stat-value">{user?.username}</div>
+                <div className="stat-value">{user?.username || 'Anonymous'}</div>
                 <div className="stat-label">Username</div>
               </div>
               <div className="stat-card">
@@ -228,64 +228,56 @@ const Profile = () => {
                 <div className="stat-label">Age</div>
               </div>
             </div>
-            
-            {bmi && (
-              <div style={{ 
-                background: '#f8f9fa', 
-                padding: '20px', 
-                borderRadius: '10px', 
+
+            {bmi && bmiInfo && (
+              <div style={{
+                background: '#f8f9fa',
+                padding: 20,
+                borderRadius: 10,
                 margin: '20px 0',
                 textAlign: 'center'
               }}>
                 <h3>BMI Calculator</h3>
-                <div style={{ 
-                  fontSize: '2rem', 
-                  fontWeight: 'bold', 
+                <div style={{
+                  fontSize: '2rem',
+                  fontWeight: 'bold',
                   color: bmiInfo.color,
                   margin: '10px 0'
-                }}>
-                  {bmi}
-                </div>
-                <div style={{ color: bmiInfo.color, fontWeight: 'bold' }}>
-                  {bmiInfo.category}
-                </div>
-                <small style={{ color: '#666', display: 'block', marginTop: '10px' }}>
+                }}>{bmi}</div>
+                <div style={{ color: bmiInfo.color, fontWeight: 'bold' }}>{bmiInfo.category}</div>
+                <small style={{ color: '#666', display: 'block', marginTop: 10 }}>
                   Based on height: {profile.height}cm, weight: {profile.weight}kg
                 </small>
               </div>
             )}
-            
+
             {profile.target_calories && (
-              <div style={{ marginTop: '20px' }}>
+              <div style={{ marginTop: 20 }}>
                 <h4>Daily Calorie Target: {profile.target_calories} calories</h4>
-                <div className="progress-bar" style={{ marginTop: '10px' }}>
-                  <div 
-                    className="progress-fill" 
-                    style={{ width: '100%' }}
-                  ></div>
+                <div className="progress-bar" style={{ marginTop: 10 }}>
+                  <div className="progress-fill" style={{ width: '100%' }}></div>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Fitness Stats */}
           <div className="card">
             <h2>Fitness Statistics</h2>
-            
+
             <div className="stats-grid">
               <div className="stat-card">
-                <div className="stat-value">{stats.totalWorkouts}</div>
+                <div className="stat-value">{stats.totalWorkouts || 0}</div>
                 <div className="stat-label">Total Workouts</div>
               </div>
               <div className="stat-card">
-                <div className="stat-value">{stats.totalCaloriesBurned}</div>
+                <div className="stat-value">{stats.totalCaloriesBurned || 0}</div>
                 <div className="stat-label">Calories Burned</div>
               </div>
             </div>
-            
+
             <div className="stats-grid">
               <div className="stat-card">
-                <div className="stat-value">{stats.totalMeals}</div>
+                <div className="stat-value">{stats.totalMeals || 0}</div>
                 <div className="stat-label">Meals Logged</div>
               </div>
               <div className="stat-card">
@@ -299,7 +291,6 @@ const Profile = () => {
         </div>
       </div>
 
-      {/* Fitness Goals & Recommendations */}
       <div className="card">
         <h2>🎯 Fitness Recommendations</h2>
         <div className="grid grid-2">
@@ -308,7 +299,7 @@ const Profile = () => {
             {profile.fitness_goal === 'weight_loss' && (
               <div>
                 <p>💡 <strong>Weight Loss Tips:</strong></p>
-                <ul style={{ marginLeft: '20px', marginTop: '10px' }}>
+                <ul style={{ marginLeft: 20, marginTop: 10 }}>
                   <li>Maintain a caloric deficit of 300-500 calories per day</li>
                   <li>Focus on cardio exercises 4-5 times per week</li>
                   <li>Include strength training 2-3 times per week</li>
@@ -319,7 +310,7 @@ const Profile = () => {
             {profile.fitness_goal === 'muscle_building' && (
               <div>
                 <p>💡 <strong>Muscle Building Tips:</strong></p>
-                <ul style={{ marginLeft: '20px', marginTop: '10px' }}>
+                <ul style={{ marginLeft: 20, marginTop: 10 }}>
                   <li>Eat in a slight caloric surplus (200-500 calories)</li>
                   <li>Focus on strength training 4-6 times per week</li>
                   <li>Consume 1.6-2.2g protein per kg body weight</li>
@@ -330,7 +321,7 @@ const Profile = () => {
             {profile.fitness_goal === 'general_fitness' && (
               <div>
                 <p>💡 <strong>General Fitness Tips:</strong></p>
-                <ul style={{ marginLeft: '20px', marginTop: '10px' }}>
+                <ul style={{ marginLeft: 20, marginTop: 10 }}>
                   <li>Aim for 150 minutes of moderate cardio per week</li>
                   <li>Include strength training 2-3 times per week</li>
                   <li>Stay hydrated and eat a balanced diet</li>
@@ -338,33 +329,17 @@ const Profile = () => {
                 </ul>
               </div>
             )}
-            {!profile.fitness_goal && (
-              <p>Set your fitness goal above to get personalized recommendations!</p>
-            )}
+            {!profile.fitness_goal && <p>Set your fitness goal above to get personalized recommendations!</p>}
           </div>
-          
+
           <div>
             <h3>Next Steps</h3>
             <div className="achievement-list">
-              {!profile.age && (
-                <div className="achievement-item">
-                  📝 Complete your profile information
-                </div>
-              )}
-              {stats.totalWorkouts < 5 && (
-                <div className="achievement-item">
-                  🏋️‍♂️ Log 5 workouts to unlock achievement
-                </div>
-              )}
-              {stats.totalMeals < 10 && (
-                <div className="achievement-item">
-                  🍎 Track 10 meals to improve nutrition insights
-                </div>
-              )}
+              {!profile.age && <div className="achievement-item">📝 Complete your profile information</div>}
+              {stats.totalWorkouts < 5 && <div className="achievement-item">🏋️‍♂️ Log 5 workouts to unlock achievement</div>}
+              {stats.totalMeals < 10 && <div className="achievement-item">🍎 Track 10 meals to improve nutrition insights</div>}
               {profile.fitness_goal && profile.age && stats.totalWorkouts >= 5 && (
-                <div className="achievement-item">
-                  🎉 You're making great progress! Keep it up!
-                </div>
+                <div className="achievement-item">🎉 You're making great progress! Keep it up!</div>
               )}
             </div>
           </div>
