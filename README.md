@@ -6,7 +6,7 @@ A comprehensive full-stack fitness and diet tracking application built with Reac
 ## Architecture
 - **Frontend**: React.js with components and context API (Port 5000)
 - **Backend**: Node.js with Express.js framework (Port 3001)
-- **Database**: SQLite with comprehensive schema for workouts, meals, and community
+- **Database**: better-sqlite3 with comprehensive schema for workouts, meals, and community
 - **Authentication**: Session-based with bcrypt password hashing
 - **APIs**: Nutritionix API for nutrition data
 - **Email**: Nodemailer with Node-cron for weekly reports
