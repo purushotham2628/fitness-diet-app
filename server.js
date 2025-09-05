@@ -125,12 +125,7 @@ app.use(session({
   cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 }
 }));
 
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, 'client', 'build')));
-} else {
-  app.use(express.static(path.join(__dirname, 'client', 'public')));
-  app.use('/static', express.static(path.join(__dirname, 'client', 'src')));
-}
+
 
 const requireAuth = (req, res, next) => {
   if (!req.session.userId) {
