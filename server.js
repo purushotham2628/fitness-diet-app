@@ -10,7 +10,18 @@ const nodemailer = require('nodemailer');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.NODE_ENV === 'production' ? (process.env.PORT || 5000) : 3001;
+const PORT = process.env.PORT || 3001;
+const path = require('path');
+
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, 'client', 'build')));
+
+  // Handles all requests that don’t match API routes by sending React app
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'client', 'build', 'index.html'));
+  });
+}
+
 
 const db = new Database('./fitness_diet.db');
 console.log("Connected to better-sqlite3 database.");
@@ -850,10 +861,10 @@ app.use((req, res) => {
 });
 
 // Start server
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on http://0.0.0.0:${PORT}`);
-  console.log('Fitness & Diet Tracker API ready!');
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
+
 
 // Graceful shutdown
 process.on('SIGINT', () => {
