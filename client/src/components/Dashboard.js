@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 
@@ -29,13 +29,17 @@ const Dashboard = () => {
         axios.get('/api/meals/recent', { withCredentials: true }),
         axios.get('/api/dashboard/weekly-progress', { withCredentials: true })
       ]);
-
-      setStats(statsRes.data);
-      setRecentWorkouts(workoutsRes.data);
-      setRecentMeals(mealsRes.data);
-      setWeeklyProgress(progressRes.data);
+      setStats(statsRes.data || {});
+      setRecentWorkouts(Array.isArray(workoutsRes.data) ? workoutsRes.data : []);
+      setRecentMeals(Array.isArray(mealsRes.data) ? mealsRes.data : []);
+      // weeklyProgress can sometimes be an object instead of an array, so check and correct:
+      setWeeklyProgress(Array.isArray(progressRes.data) ? progressRes.data : []);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
+      setStats({});
+      setRecentWorkouts([]);
+      setRecentMeals([]);
+      setWeeklyProgress([]);
     } finally {
       setLoading(false);
     }
@@ -44,6 +48,9 @@ const Dashboard = () => {
   if (loading) {
     return <div className="loading">Loading dashboard...</div>;
   }
+
+  // Defensive: if weeklyProgress is not array, set to empty array
+  const safeWeeklyProgress = Array.isArray(weeklyProgress) ? weeklyProgress : [];
 
   return (
     <div>
@@ -92,26 +99,26 @@ const Dashboard = () => {
       </div>
 
       {/* Weekly Progress Chart */}
-      {weeklyProgress.length > 0 && (
+      {safeWeeklyProgress.length > 0 && (
         <div className="chart-container">
           <h2 className="chart-title">Weekly Progress</h2>
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={weeklyProgress}>
+            <LineChart data={safeWeeklyProgress}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="day" />
               <YAxis />
               <Tooltip />
-              <Line 
-                type="monotone" 
-                dataKey="caloriesBurned" 
-                stroke="#667eea" 
+              <Line
+                type="monotone"
+                dataKey="caloriesBurned"
+                stroke="#667eea"
                 strokeWidth={3}
                 name="Calories Burned"
               />
-              <Line 
-                type="monotone" 
-                dataKey="caloriesConsumed" 
-                stroke="#764ba2" 
+              <Line
+                type="monotone"
+                dataKey="caloriesConsumed"
+                stroke="#764ba2"
                 strokeWidth={3}
                 name="Calories Consumed"
               />
@@ -124,13 +131,13 @@ const Dashboard = () => {
         {/* Recent Workouts */}
         <div className="card">
           <h2>Recent Workouts</h2>
-          {recentWorkouts.length > 0 ? (
+          {Array.isArray(recentWorkouts) && recentWorkouts.length > 0 ? (
             recentWorkouts.map((workout) => (
               <div key={workout.id} className="workout-item">
                 <div className="item-header">
                   <div className="item-title">{workout.exercise_name}</div>
                   <div className="item-date">
-                    {new Date(workout.date).toLocaleDateString()}
+                    {workout.date ? new Date(workout.date).toLocaleDateString() : 'No date'}
                   </div>
                 </div>
                 <div className="item-details">
@@ -153,13 +160,13 @@ const Dashboard = () => {
         {/* Recent Meals */}
         <div className="card">
           <h2>Recent Meals</h2>
-          {recentMeals.length > 0 ? (
+          {Array.isArray(recentMeals) && recentMeals.length > 0 ? (
             recentMeals.map((meal) => (
               <div key={meal.id} className="meal-item">
                 <div className="item-header">
                   <div className="item-title">{meal.food_name}</div>
                   <div className="item-date">
-                    {new Date(meal.date).toLocaleDateString()}
+                    {meal.date ? new Date(meal.date).toLocaleDateString() : 'No date'}
                   </div>
                 </div>
                 <div className="item-details">
