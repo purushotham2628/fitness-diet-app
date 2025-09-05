@@ -46,41 +46,47 @@ function AppContent() {
       {user && <Navbar />}
       <div className="container">
         <Routes>
-          <Route 
-            path="/login" 
-            element={user ? <Navigate to="/dashboard" /> : <Login />} 
+          <Route
+            path="/login"
+            element={user ? <Navigate to="/dashboard" /> : <Login />}
           />
-          <Route 
-            path="/register" 
-            element={user ? <Navigate to="/dashboard" /> : <Register />} 
+          <Route
+            path="/register"
+            element={user ? <Navigate to="/dashboard" /> : <Register />}
           />
-          <Route 
-            path="/dashboard" 
-            element={user ? <Dashboard /> : <Navigate to="/login" />} 
+          <Route
+            path="/dashboard"
+            element={user ? <Dashboard /> : <Navigate to="/login" />}
           />
-          <Route 
-            path="/workouts" 
-            element={user ? <WorkoutTracker /> : <Navigate to="/login" />} 
+          <Route
+            path="/workouts"
+            element={user ? <WorkoutTracker /> : <Navigate to="/login" />}
           />
-          <Route 
-            path="/diet" 
-            element={user ? <DietTracker /> : <Navigate to="/login" />} 
+          <Route
+            path="/diet"
+            element={user ? <DietTracker /> : <Navigate to="/login" />}
           />
-          <Route 
-            path="/progress" 
-            element={user ? <Progress /> : <Navigate to="/login" />} 
+          <Route
+            path="/progress"
+            element={user ? <Progress /> : <Navigate to="/login" />}
           />
-          <Route 
-            path="/community" 
-            element={user ? <Community /> : <Navigate to="/login" />} 
+          <Route
+            path="/community"
+            element={user ? <Community /> : <Navigate to="/login" />}
           />
-          <Route 
-            path="/profile" 
-            element={user ? <Profile /> : <Navigate to="/login" />} 
+          <Route
+            path="/profile"
+            element={user ? <Profile /> : <Navigate to="/login" />}
           />
-          <Route 
-            path="/" 
-            element={user ? <Navigate to="/dashboard" /> : <Navigate to="/login" />} 
+          {/* Change root path to always redirect to /login */}
+          <Route
+            path="/"
+            element={<Navigate to="/login" replace />}
+          />
+          {/* Optionally, add a catch-all route for unmatched URLs */}
+          <Route
+            path="*"
+            element={<Navigate to={user ? "/dashboard" : "/login"} replace />}
           />
         </Routes>
       </div>
